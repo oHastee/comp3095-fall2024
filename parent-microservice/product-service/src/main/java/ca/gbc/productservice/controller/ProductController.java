@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.util.List;
 
 @RestController
-@RequestMapping(/*"/api/product"*/)
+@RequestMapping("/api/product")
 @RequiredArgsConstructor
 public class ProductController {
 
@@ -33,7 +33,7 @@ public class ProductController {
     }
 
     //http://localhost:8080/api/product/jlgjfhkjghfkjhgdfkj
-    @PutMapping(/*"/{productID}"*/)
+    @PutMapping("/{productID}")
     //@ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<?> updateProduct(@PathVariable("productID") String productID,
                                            @RequestBody ProductRequest productRequest){
