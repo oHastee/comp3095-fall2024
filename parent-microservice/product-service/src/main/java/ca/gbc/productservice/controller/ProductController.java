@@ -43,7 +43,7 @@ public class ProductController {
         //set the location header attribute
         HttpHeaders headers = new HttpHeaders();
         headers.add("Location", "api/product/" + updatedProductID);
-        return new ResponseEntity<>(headers, HttpStatus.OK);
+        return new ResponseEntity<>(headers, HttpStatus.NO_CONTENT);
     }
 
     @DeleteMapping("/{productID}")
