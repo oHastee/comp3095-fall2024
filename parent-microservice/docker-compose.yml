@@ -1,5 +1,16 @@
+#---------------------------------
+# 1. docker-compose -p microservices-comp3095-ecommerce -f docker-compose.yml up -d
+# --- This command will start the containers in detached mode without rebuilding the images (if they already exist)
+#
+# 2. docker-compose -p microservices-comp3095-ecommerce -f docker-compose.yml up -d --build
+# --- This command forces the rebuild of images, even if the images already exist, before starting the containers ls
+#---------------------------------
 version: '3.9'
 
+# Define services (containers) that will run as part of the microservices stack.
+#------------------------
+#MicroService Containers
+#-------------------------
 services:
 
   product-service:
@@ -17,9 +28,11 @@ services:
     networks:
       - spring
 
-
+  #------------------------
+  #Database Containers
+  #-------------------------
   mongodb:
-    image: mongo:latest
+    image: mongo:latest #If you dont specify the version you automatically get the latest version
     container_name: mongodb
     ports:
       - "27018:27017"
@@ -30,6 +43,41 @@ services:
       - ./data/mongo/products:/data/db
       - ./init/mongo/docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     #restart: unless-stopped  # restarts container indefinitely in case it has problems bringing it up
-    command: mongod -auth
+    #command: mongod -auth #enforces authentication
     networks:
       - spring
+
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8088:8088"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+    container_name: mongo-express
+    depends_on:
+      - mongodb
+    networks:
+      - spring
+
+# Optional values section for persisting data
+volumes:
+  mongo_db:
+    driver: local
+
+
+networks:
+  spring:
+    driver: bridge
+
+
+
+
+
+
+    #------------------------
+    #GUI Containers
+    #-------------------------
+
+

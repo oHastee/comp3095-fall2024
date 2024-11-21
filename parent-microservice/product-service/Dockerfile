@@ -1,17 +1,19 @@
+#-------------------
+# BUILD STAGE
+#-------------------
 FROM gradle:8-jdk22-alpine AS builder
 
 COPY --chown=gradle:gradle . /home/grade/src
 
 WORKDIR /home/gradle/src
 
-RUN gradle build -X test
+RUN gradle build -x test
 
 
 # ----------------
 # Package Stage
 # ---------------
-
-FROM openjdkL22-jdk
+FROM openjdk:22-jdk
 
 RUN mkdir /app
 
