@@ -5,10 +5,21 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$/parent-microservice" />
-        <option name="gradleJvm" value="openjdk-21" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/parent-microservice" />
+            <option value="$PROJECT_DIR$/parent-microservice/order-service" />
+            <option value="$PROJECT_DIR$/parent-microservice/product-service" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/parent-microservice/order-service" />
+        <option name="gradleJvm" value="21" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/parent-microservice" />
+            <option value="$PROJECT_DIR$/parent-microservice/order-service" />
             <option value="$PROJECT_DIR$/parent-microservice/product-service" />
           </set>
         </option>
