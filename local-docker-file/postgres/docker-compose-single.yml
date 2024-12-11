@@ -1,0 +1,34 @@
+services:
+  # This defines the configuration for the product service container.
+  postgres:
+    # Specifies the name of the image to be used for this service.
+    image: postgres
+    ports:
+      # he put 5433:5432 because he already has postgres so he needs a different port
+      - "5432:5432"
+
+      # Sets a specific name for the container.
+    container_name: postgres-single
+    # This section allows you to set environment variables within the container.
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+    volumes:
+
+      - ./data/order:/var/lib/postgresql/data
+      - ./init/order/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  pgadmin:
+    # Specifies the name of the image to be used for this service.
+    image: dpage/pgadmin4
+
+    ports:
+      # he put 5433:5432 because he already has postgres so he needs a different port
+      - "8888:80"
+
+      # Sets a specific name for the container.
+    container_name: pgadmin-single
+    # This section allows you to set environment variables within the container.
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=user@domain.ca
+      - PGADMIN_DEFAULT_PASSWORD=password

@@ -1,0 +1,49 @@
+services:
+
+
+
+  #postgres:
+  postgres-inventory:
+    image: postgres
+    ports:
+
+      # the 5432 internal port (in 5432:5432) is for my order-service so that is why we use 5433
+      # he is using 5434:5432 because he is using 5433:5432 for his order-service
+      - "5433:5432"
+    container_name: postgres-inventory
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=inventory-service
+    volumes:
+      - ./data/inventory:/var/lib/postgresql/data
+      - ./init/inventory/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+
+  #added on week 11
+  postgres-order:
+    image: postgres
+    ports:
+      - "5432:5432"
+    container_name: postgres-order
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./data/order:/var/lib/postgresql/data
+      - ./init/order/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+
+
+
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8888:80"
+    container_name: pgadmin-inventory
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=user@domain.ca
+      - PGADMIN_DEFAULT_PASSWORD=password

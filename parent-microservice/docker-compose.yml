@@ -1,84 +1,206 @@
-#---------------------------------
-# 1. docker-compose -p microservices-comp3095-ecommerce -f docker-compose-single.yml up -d
-# --- This command will start the containers in detached mode without rebuilding the images (if they already exist)
-#
-# 2. docker-compose -p microservices-comp3095-ecommerce -f docker-compose-single.yml up -d --build
-# --- This command forces the rebuild of images, even if the images already exist, before starting the containers ls
-#---------------------------------
+version: "3.9"
 
-
-# Define services (containers) that will run as part of the microservices stack.
-#------------------------
-#MicroService Containers
-#-------------------------
-#version: '3.8'
 services:
-
-  product-service:
-    image: product-service
-    ports:
-      - "8087:8087"
-    build:
-      context: ./product-service  # The directory where the Dockerfile resides
-      dockerfile: Dockerfile    # Specify the Dockerfile for use to build image
-    container_name: product-service
+  keycloak:
+    container_name: keycloak
+    hostname: keycloak
+    image: quay.io/keycloak/keycloak:24.0.1
+    command: [ "start-dev", "--import-realm" ]
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      DB_VENDOR: postgres
+      DB_ADDR: postgres-keycloak
+      DB_DATABASE: keycloak
+      DB_USER: admin
+      DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: password
+      ROOT_LOGLEVEL: DEBUG
+      JBOSS_LOG_MANAGER_ROOT_LOGGER: DEBUG, stdout, FILE
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./realms/:/opt/keycloak/data/import
+      - ./keycloak-data:/opt/keycloak/data/h2 # Mount a host directory
+      - ./keycloak-tmp:/tmp # Map /tmp
     depends_on:
-      - mongodb
+      - postgres-keycloak
     networks:
       - spring
 
-  #------------------------
-  #Database Containers
-  #-------------------------
+
+
+
+
+  postgres-keycloak:
+    container_name: postgres-keycloak
+    image: postgres:15-alpine
+    ports:
+      - "5431:5432"
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - PGDATA=/data/postgres
+    volumes:
+      - ./data/postgres/keycloak:/var/lib/postgresql/data
+    networks:
+      - spring
+
+  postgres-inventory:
+    container_name: postgres-inventory
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=inventory-service
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - PGDATA=/data/postgres
+    volumes:
+      - ./data/postgres/inventory:/var/lib/postgresql/data
+      - ./init/inventory/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - spring
+
+  postgres-order:
+    container_name: postgres-order
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=order-service
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - PGDATA=/data/postgres
+    volumes:
+      - ./data/postgres/order:/var/lib/postgresql/data
+      - ./init/order/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - spring
+
   mongodb:
-    image: mongo:latest #If you dont specify the version you automatically get the latest version
+    image: mongo:latest
     container_name: mongodb
     ports:
-      - "27018:27017"
+      - "27017:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=password
     volumes:
+      # This mounts a local directory (./data/mongo/products) to the container's data directory, allowing data persistence.
       - ./data/mongo/products:/data/db
+      # This mounts an initialization script, which can run on container startup to set up the database.
       - ./init/mongo/docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
-    #restart: unless-stopped  # restarts container indefinitely in case it has problems bringing it up
-    #command: mongod -auth #enforces authentication
     networks:
       - spring
+    # This section defines a health check for the MongoDB service.
+    healthcheck:
+      # The command that is run to check the health of the service.
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      # How often to run the health check (30 seconds).
+      interval: 30s
+      #  How long to wait for a health check to succeed (10 seconds).
+      timeout: 10s
+      # The number of consecutive failures needed to consider the container unhealthy (5).
+      retries: 5
 
   mongo-express:
+    container_name: mongo-express
     image: mongo-express
     ports:
-      - "8088:8081"
+      - "8081:8081"
     environment:
       - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
       - ME_CONFIG_MONGODB_ADMINPASSWORD=password
       - ME_CONFIG_MONGODB_SERVER=mongodb
-    container_name: mongo-express
     depends_on:
       - mongodb
     networks:
       - spring
 
-# Optional values section for persisting data
+  inventory-service:
+    container_name: inventory-service
+    build:
+      context: ./inventory-service
+      dockerfile: ./Dockerfile
+    image: inventory-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-inventory:5432/inventory-service
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - postgres-inventory
+    ports:
+      - "8088:8088"
+    networks:
+      - spring
+
+  order-service:
+    container_name: order-service
+    build:
+      context: ./order-service
+      dockerfile: ./Dockerfile
+    image: order-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-order:5432/order-service
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - postgres-order
+    ports:
+      - "8087:8087"
+    networks:
+      - spring
+
+  product-service:
+    container_name: product-service
+    build:
+      context: ./product-service
+      dockerfile: ./Dockerfile
+    image: product-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - mongodb
+    ports:
+      - "8086:8086"
+    networks:
+      - spring
+
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: ./api-gateway
+      dockerfile: ./Dockerfile
+    image: api-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_APPLICATION_JSON: '{"logging":{"level":{"root":"INFO","ca.gbc.apigateway":"DEBUG"}}}'
+    ports:
+      - "9001:9000"
+    networks:
+      - spring
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=user@domain.ca
+      - PGADMIN_DEFAULT_PASSWORD=password
+    ports:
+      - "8888:80"
+    networks:
+      - spring
+
 volumes:
-  mongo_db:
+  mongo-db:
     driver: local
 
 
 networks:
   spring:
     driver: bridge
-
-
-
-
-
-
-    #------------------------
-    #GUI Containers
-    #-------------------------
-
-

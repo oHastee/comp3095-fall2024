@@ -1,30 +1,27 @@
-#-------------------
-# BUILD STAGE
-#-------------------
+
 FROM gradle:8-jdk23-alpine AS builder
 
-COPY --chown=gradle:gradle . /home/gradle/src
+COPY --chown=gradle.gradle . /home/gradle/src
 
 WORKDIR /home/gradle/src
+
 
 RUN gradle build -x test
 
 
-# ----------------
-# Package Stage
-# ---------------
 FROM openjdk:23-jdk
 
 RUN mkdir /app
 
 COPY --from=builder /home/gradle/src/build/libs/*.jar /app/product-service.jar
-#  app/product-service.jar   product-service will have to change with new docker files
-#  name it to the microservice youre working on
+
 
 ENV MONGO_DB_USERNAME=admin \
     MONGO_DB_PWD=password
 
-EXPOSE 8087
 
+EXPOSE 8086
+.
 ENTRYPOINT ["java", "-jar", "/app/product-service.jar"]
+
 
